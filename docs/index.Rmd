@@ -1,7 +1,7 @@
 ---
 title: "Bellabeat Case Study"
 author: "Kristen"
-date: "2024-03-26"
+date: "2024-04-15"
 output: html_document
 ---
 
@@ -13,14 +13,13 @@ knitr::opts_chunk$set(echo = TRUE)
   * What are some trends in smart device usage?
   * How could these trends apply to Bellabeat customers?
   * How could these trends help influence Bellabeat marketing strategy?
-* Then select one Bellabeat product to apply these insights to
 * Use public data that explores smart device users' daily habits
-  The FitBit Fitness Tracker Data--may have some limitations, encouraged to consider adding another dataset to address those limitations
+  The FitBit Fitness Tracker Data
 
 ### Deliverables:
 
 * **A clear summary of the business task:** 
-  * Apply insights from non-Bellabeat smart device usage to a Bellabeat product to inform marketing strategy 
+  * Apply insights from non-Bellabeat smart device usage to Bellabeat products to inform marketing strategy 
   
 * **A description of all data sources used**
   * [**FitBit Fitness Tracker Data**](https://www.kaggle.com/datasets/arashnic/fitbit): Contains the data from 30 eligible FitBit users (respondents) who submitted their daily tracked activities, which included physical activity, heart rate, & sleep. The data was collected from 3/12/2016 to 5/12/2016. It is in a long data format and was collected through a survey distributed by Amazon Mechanical Turk. It was posted on Zenodo & Kaggle.
