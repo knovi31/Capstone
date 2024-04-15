@@ -1,0 +1,356 @@
+---
+title: "Bellabeat Case Study"
+author: "Kristen"
+date: "2024-03-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# **Details**
+* Analyze smart device usage data in order to gain insight into how consumers use non-Bellabeat smart devices
+  * What are some trends in smart device usage?
+  * How could these trends apply to Bellabeat customers?
+  * How could these trends help influence Bellabeat marketing strategy?
+* Then select one Bellabeat product to apply these insights to
+* Use public data that explores smart device users' daily habits
+  The FitBit Fitness Tracker Data--may have some limitations, encouraged to consider adding another dataset to address those limitations
+
+### Deliverables:
+
+* **A clear summary of the business task:** 
+  * Apply insights from non-Bellabeat smart device usage to a Bellabeat product to inform marketing strategy 
+  
+* **A description of all data sources used**
+  * [**FitBit Fitness Tracker Data**](https://www.kaggle.com/datasets/arashnic/fitbit): Contains the data from 30 eligible FitBit users (respondents) who submitted their daily tracked activities, which included physical activity, heart rate, & sleep. The data was collected from 3/12/2016 to 5/12/2016. It is in a long data format and was collected through a survey distributed by Amazon Mechanical Turk. It was posted on Zenodo & Kaggle.
+  
+* **Documentation of any cleaning or manipulation of data**
+  
+|                       Loading Packages
+```{r, message = FALSE}
+library(reshape2)
+library(ragg)
+library(tidyverse)
+library(here)
+library(skimr)
+library(janitor)
+library(ggplot2)
+library(purrr)
+library(dplyr)
+```
+
+|                       Setting File Path
+```{r}
+setwd("C:/Users/krist/OneDrive/Documents/GitHub/Capstone/docs")
+```
+
+|                       Loading Data
+```{r}
+daily_activity_1 <- read.csv("dailyActivity_merged_1.csv")
+```
+
+|                       Reviewing Data
+```{r}
+skim_without_charts(daily_activity_1)
+glimpse(daily_activity_1)
+head(daily_activity_1)
+View(daily_activity_1)
+```
+
+|                       Converting Values
+```{r}
+daily_activity_1 <- daily_activity_1 %>% 
+  mutate(ActivityDate = lubridate::mdy(ActivityDate))
+
+class(daily_activity_1$ActivityDate)
+```
+
+|                       Sorting
+```{r}
+daily_activity_1 <- daily_activity_1 %>% 
+  arrange(ActivityDate, Id)
+
+View(daily_activity_1)
+```
+
+|                       Determining Number of Unique Ids (there are only supposed to be 30 users)
+```{r}
+length(unique(daily_activity_1$Id))
+```
+
+|                       Downloading Other Datasets
+```{r}
+sleep_minutes_1 <- read.csv("minuteSleep_merged_1.csv")
+heartrate_seconds_1 <- read.csv("heartrate_seconds_merged_1.csv")
+steps_minutes_1 <- read.csv("minuteStepsNarrow_merged_1.csv")
+intensities_minutes_1 <- read.csv("minuteIntensitiesNarrow_merged_1.csv")
+calories_minutes_1 <- read.csv("minuteCaloriesNarrow_merged_1.csv")
+```
+
+|                       Comparing Datasets
+```{r}
+unique(calories_minutes_1$Id)
+unique(intensities_minutes_1$Id)
+unique(sleep_minutes_1$Id) # missing some Ids
+unique(steps_minutes_1$Id)
+
+length(unique(calories_minutes_1$ActivityMinute))
+length(unique(intensities_minutes_1$ActivityMinute))
+length(unique(sleep_minutes_1$date)) # named & formatted differently, has more values in date column
+length(unique(steps_minutes_1$ActivityMinute))
+```
+
+|                       Combining Like Datasets
+```{r}
+combined_minutes <- cbind(calories_minutes_1, intensities_minutes_1[,3, drop=FALSE])
+
+full_combined_minutes <- cbind(combined_minutes, steps_minutes_1[,3, drop=FALSE])
+```
+
+|                       Separating ActivityMinute Column
+```{r}
+combined_minutes_clean_1 <- full_combined_minutes %>% 
+  separate(ActivityMinute, into = c('date', 'time', 'am_pm'), sep = ' ', remove = TRUE)
+```
+
+|                       Downloading Other Datasets
+```{r}
+sleep_day_2 <- read.csv("sleepDay_merged_2.csv")
+daily_activity_2 <- read.csv("dailyActivity_merged_2.csv")
+```
+
+|                       Reviewing Datasets
+```{r}
+nrow(sleep_day_2) # 413
+nrow(daily_activity_2) # 940
+
+length(unique(sleep_day_2$Id)) # 24
+length(unique(daily_activity_2$Id)) # 33
+
+sleep_day_2 %>% 
+  select(TotalSleepRecords, TotalMinutesAsleep, TotalTimeInBed) %>% 
+  summary()
+daily_activity_2 %>% 
+  select(TotalSteps, TotalDistance, SedentaryMinutes) %>% 
+  summary()
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = daily_activity_2) +
+  geom_point(mapping = aes(x = TotalSteps, y = SedentaryMinutes)) +
+  geom_smooth(mapping = aes(x = TotalSteps, y = SedentaryMinutes))
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = sleep_day_2) +
+  geom_point(mapping = aes(x = TotalMinutesAsleep, y = TotalTimeInBed)) +
+  geom_smooth(mapping = aes(x = TotalMinutesAsleep, y = TotalTimeInBed))
+```
+
+|                       Separating Columns
+```{r, results = FALSE}
+sleep_day_2_edit <- sleep_day_2 %>% 
+  separate(SleepDay, into = c('Date', 'Time', 'Am_Pm'), sep = ' ', remove = TRUE)
+
+sleep_day_2_edit[-c(3, 4)]
+```
+
+|                       Renaming Columns
+```{r}
+daily_activity_2_edit <- daily_activity_2 %>% 
+  rename(Date = ActivityDate)
+View(daily_activity_2_edit)
+```
+
+|                       Combining Datasets
+```{r, results = FALSE}
+combined_sleep_activity_day <- right_join(sleep_day_2_edit, daily_activity_2_edit)
+
+combined_sleep_activity_day[-c(3,4)]
+```
+
+|                       Reviewing Data
+```{r}
+n_distinct(combined_sleep_activity_day$Id) # 24 w/ merge function, 33 w/ full join function
+
+unique(sleep_day_2$Id)
+unique(daily_activity_2$Id)
+
+nrow(daily_activity_2)
+nrow(sleep_day_2)
+
+413+940 # <- this is the max number of rows the joined data should have
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = combined_sleep_activity_day) +
+  geom_point(mapping = aes(x = TotalSteps, y = TotalMinutesAsleep)) +
+  geom_smooth(mapping = aes(x = TotalSteps, y = TotalMinutesAsleep)) +
+  xlim(0, 20000)
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = combined_sleep_activity_day) +
+  geom_point(mapping = aes(x = VeryActiveMinutes, y = TotalMinutesAsleep)) +
+  geom_smooth(mapping = aes(x = VeryActiveMinutes, y = TotalMinutesAsleep))
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = combined_sleep_activity_day) +
+  geom_point(mapping = aes(x = FairlyActiveMinutes, y = TotalMinutesAsleep)) +
+  geom_smooth(mapping = aes(x = FairlyActiveMinutes, y = TotalMinutesAsleep))
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = combined_sleep_activity_day) +
+  geom_point(mapping = aes(x = LightlyActiveMinutes, y = TotalMinutesAsleep)) +
+  geom_smooth(mapping = aes(x = LightlyActiveMinutes, y = TotalMinutesAsleep))
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = combined_sleep_activity_day) +
+  geom_point(mapping = aes(x = TotalSteps, y = Calories)) +
+  geom_smooth(mapping = aes(x = TotalSteps, y = Calories))
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = combined_sleep_activity_day) +
+  geom_point(mapping = aes(x = TotalMinutesAsleep, y = SedentaryMinutes)) +
+  geom_smooth(mapping = aes(x = TotalMinutesAsleep, y = SedentaryMinutes))
+```
+
+|                       Melting Data
+```{r}
+sleep_activity_melt <- melt(combined_sleep_activity_day, na.rm = FALSE, c("LightlyActiveMinutes", "VeryActiveMinutes"), id = c("Calories"))
+```
+
+|                       Renaming Columns
+```{r}
+sleep_activity_melt_edit <- sleep_activity_melt %>% 
+  rename(ActivityLevel = variable, Minutes = value)
+```
+
+|                       Filtering Data
+```{r}
+sleep_activity_melt_edit_2 <- filter(sleep_activity_melt_edit, Calories > 0, Minutes > 0)
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = sleep_activity_melt_edit_2) +
+  geom_point(mapping = aes(x = Minutes, y = Calories, color = ActivityLevel))
+```
+
+|                       Melting Data
+```{r}
+sleep_activity_melt_3 <- melt(combined_sleep_activity_day, na.rm = FALSE, c("LightlyActiveMinutes", "FairlyActiveMinutes", "VeryActiveMinutes"), id = c("Calories"))
+```
+
+|                       Renaming columns
+```{r}
+sleep_activity_melt_edit_3 <- sleep_activity_melt_3 %>% 
+  rename(ActivityLevel = variable, Minutes = value)
+```
+
+|                       Filtering Data
+```{r}
+sleep_activity_melt_edit_4 <- filter(sleep_activity_melt_edit_3, Calories > 0, Minutes > 0)
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = sleep_activity_melt_edit_4) +
+  geom_point(mapping = aes(x = Minutes, y = Calories, color = ActivityLevel))
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = sleep_activity_melt_edit_4) +
+  geom_point(mapping = aes(x = Minutes, y = Calories, color = ActivityLevel)) +
+  geom_smooth(mapping = aes(x = Minutes, y = Calories)) +
+  facet_wrap(~ActivityLevel) +
+  xlim(0, 200) +
+  guides(color = FALSE)
+```
+
+|                       Filtering Data
+```{r}
+daily_activity_2_edit2 <- filter(daily_activity_2_edit, Calories > 0, LightlyActiveMinutes > 0)
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = daily_activity_2_edit2) +
+  geom_point(mapping = aes(x = LightlyActiveMinutes, y = Calories)) + 
+  geom_smooth(mapping = aes(x = LightlyActiveMinutes, y = Calories))
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = daily_activity_2_edit2) +
+  geom_point(mapping = aes(x = FairlyActiveMinutes, y = Calories)) + 
+  geom_smooth(mapping = aes(x = FairlyActiveMinutes, y = Calories))
+```
+
+|                       Looking for Trends
+```{r}
+ggplot(data = daily_activity_2_edit2) +
+  geom_point(mapping = aes(x = VeryActiveMinutes, y = Calories)) + 
+  geom_smooth(mapping = aes(x = VeryActiveMinutes, y = Calories))
+```
+
+* **A summary of your analysis**  
+                       **Trial & Error**  
+I began my analysis by looking at the Daily Activity data from the first half of the study. I reviewed the data and cleaned it. Nothing jumped out at me so I moved on to other datasets, particularly the ones recording different variables by the minute. However, I noticed the heart rate data was by seconds. I had the idea to find the average of each minute so I could combine it with the other datasets that were by the minute. I ended up abandoning this idea because it would be incredibly time consuming. I combined the datasets that were by the minute & tried to plot the data to look for trends. This was unsuccessful.  
+                       **Trends**  
+I moved on to other datasets, specifically the daily sleep & daily activity datasets from the second half of the study. I reviewed the data and began looking for trends. This was more successful. I found that for up to ~10,000 steps there is a negative correlation between sedentary minutes & total steps (more sedentary minutes means less total steps). I also discovered that not a lot of the users are extremely active (extremely active being 15,000+ steps and less 500 sedentary minutes). There are more moderate, average activity users.
+Once I saw some initial trends I combined the data using an outer join (I first manipulated the data so it would match and combine successfully). I looked for trends in the combined data.I was interested in if total steps had any correlation with total minutes asleep (it did not) and if very active minutes had any correlation with total minutes asleep (it did not). I did however notice a positive correlation between total steps and calories burned (the more steps you take the more calories you burn). I also saw a negative correlation between sedentary minutes and total minutes asleep (the more sedentary minutes the less time asleep).  
+I melted the combined data so that all activity levels would be in one column and could be plotted as facets to compare their relationship to calories burned. Through the plots of the melted table I was able to determine that there was a positive correlation between lightly active minutes and calories burned up to about 150 lightly active minutes. There was no correlation between fairly active minutes and calories burned. There was a positive correlation between very active minutes and calories burned from about 50 minutes to 150 minutes.  
+
+* **Supporting visuals & key findings**
+```{r, echo = FALSE}
+ggplot(data = daily_activity_2) +
+  geom_point(mapping = aes(x = TotalSteps, y = SedentaryMinutes))
+```
+  
+Not many extremely active users (15,000+ steps and less 500 sedentary minutes), more moderate, average activity users.
+
+```{r, echo = FALSE}
+ggplot(data = combined_sleep_activity_day) +
+  geom_point(mapping = aes(x = TotalSteps, y = Calories))
+```
+  
+The more steps you take the more calories you burn
+
+```{r, echo = FALSE}
+ggplot(data = combined_sleep_activity_day) +
+  geom_point(mapping = aes(x = TotalMinutesAsleep, y = SedentaryMinutes))
+```
+  
+The more sedentary minutes the less time spent asleep
+
+```{r, echo = FALSE}
+ggplot(data = sleep_activity_melt_edit_4) +
+  geom_point(mapping = aes(x = Minutes, y = Calories, color = ActivityLevel)) +
+  facet_wrap(~ActivityLevel) +
+  xlim(0, 200) +
+  guides(color = FALSE)
+```
+  
+Up to about 150 lightly active minutes, the more lightly active minutes the more calories burned
+
+* **Your top high-level content recommendations**
+  * Target average people and maybe even those that have low activity levels. 
+  * Advertise that: 
+    * The more steps you take the more calories you burn
+    * Decreasing sedentary time may contribute to better sleep
+    * Even being lightly active (with activities like walking) for short periods of time throughout your day can increase calories burned
